@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Lotofácil — Gerador de Jogos (Estratégias)</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#111a2e; --muted:#93a4c7; --text:#e8eefc;
+      --accent:#3b82f6; --accent2:#22c55e; --danger:#ef4444; --border:rgba(255,255,255,.10);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background: radial-gradient(1000px 500px at 20% 10%, rgba(59,130,246,.25), transparent 60%),
+                  radial-gradient(900px 500px at 80% 40%, rgba(34,197,94,.20), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1100px; margin:24px auto; padding:0 16px;}
+    h1{font-size:20px; margin:0 0 12px 0;}
+    .grid{display:grid; gap:12px; grid-template-columns: 1fr;}
+    @media(min-width:900px){ .grid{grid-template-columns: 420px 1fr;} }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius:16px; padding:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px;}
+    input, textarea, select{
+      width:100%; padding:10px 12px; border-radius:12px;
+      border:1px solid var(--border); background:rgba(0,0,0,.25); color:var(--text);
+      outline:none;
+    }
+    textarea{min-height:70px; resize:vertical;}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+    .btns{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+    button{
+      border:0; border-radius:12px; padding:10px 12px; cursor:pointer; font-weight:600;
+      background: var(--accent); color:white;
+    }
+    button.secondary{background: rgba(255,255,255,.10); color:var(--text); border:1px solid var(--border);}
+    button.success{background: var(--accent2);}
+    button.danger{background: var(--danger);}
+    .small{font-size:12px; color:var(--muted); line-height:1.4;}
+    .out{
+      white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background: rgba(0,0,0,.25); border:1px solid var(--border);
+      border-radius:12px; padding:12px; min-height:240px; overflow:auto;
+    }
+    .pill{
+      display:inline-block; padding:4px 10px; border-radius:999px;
+      border:1px solid var(--border); background: rgba(0,0,0,.2);
+      font-size:12px; color:var(--muted);
+    }
+    .topline{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+    .kpi{display:flex; gap:8px; flex-wrap:wrap;}
+    .err{color:#fecaca;}
+    .ok{color:#bbf7d0;}
+    .table{width:100%; border-collapse:collapse; margin-top:10px;}
+    .table th,.table td{border-bottom:1px solid var(--border); padding:8px 6px; text-align:left; font-size:13px;}
+    .table th{color:var(--muted); font-weight:600;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topline">
+      <h1>Lotofácil — Gerador de Jogos com Filtros (pares/ímpares, soma, repetição, consecutivos, linhas/colunas)</h1>
+      <div class="kpi">
+        <span class="pill" id="kpiStatus">Pronto</span>
+        <span class="pill" id="kpiCount">0 jogos</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="small">
+          Este app não “prevê” resultado. Ele apenas <b>gera jogos estatisticamente equilibrados</b> que passam pelos filtros.
+          Tudo roda localmente no seu navegador.
+        </div>
+
+        <label>Último resultado (15 números de 1 a 25, separados por espaço/vírgula)</label>
+        <textarea id="lastResult" placeholder="Ex: 01 02 04 05 06 08 10 11 12 13 15 18 20 23 25"></textarea>
+
+        <div class="row">
+          <div>
+            <label>Quantidade de jogos para gerar</label>
+            <input id="qty" type="number" min="1" max="200" value="10"/>
+          </div>
+          <div>
+            <label>Tentativas máximas (se filtros estiverem rígidos)</label>
+            <input id="tries" type="number" min="100" max="200000" value="25000"/>
+          </div>
+        </div>
+
+        <div class="row3">
+          <div>
+            <label>Pares (mín)</label>
+            <input id="pairsMin" type="number" min="0" max="15" value="7"/>
+          </div>
+          <div>
+            <label>Pares (máx)</label>
+            <input id="pairsMax" type="number" min="0" max="15" value="8"/>
+          </div>
+          <div>
+            <label>Repetidos do último (mín)</label>
+            <input id="repMin" type="number" min="0" max="15" value="8"/>
+          </div>
+        </div>
+
+        <div class="row3">
+          <div>
+            <label>Repetidos do último (máx)</label>
+            <input id="repMax" type="number" min="0" max="15" value="10"/>
+          </div>
+          <div>
+            <label>Soma (mín)</label>
+            <input id="sumMin" type="number" min="15" max="325" value="180"/>
+          </div>
+          <div>
+            <label>Soma (máx)</label>
+            <input id="sumMax" type="number" min="15" max="325" value="220"/>
+          </div>
+        </div>
+
+        <div class="row3">
+          <div>
+            <label>Consecutivos (mín)</label>
+            <input id="consMin" type="number" min="0" max="14" value="2"/>
+          </div>
+          <div>
+            <label>Consecutivos (máx)</label>
+            <input id="consMax" type="number" min="0" max="14" value="5"/>
+          </div>
+          <div>
+            <label>Máx por linha/coluna (grade 5×5)</label>
+            <input id="lineMax" type="number" min="1" max="5" value="4"/>
+          </div>
+        </div>
+
+        <label>Modo de geração</label>
+        <select id="mode">
+          <option value="balanced">Balanceado (repetição + equilíbrio)</option>
+          <option value="random">Aleatório filtrado (somente filtros)</option>
+          <option value="base18">Base 18 (você define 18 números e o app monta 15 com filtros)</option>
+        </select>
+
+        <label>Base 18 números (somente se escolher “Base 18”) — 18 números de 1 a 25</label>
+        <textarea id="base18" placeholder="Ex: 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 20 25"></textarea>
+
+        <div class="btns">
+          <button class="success" id="btnGenerate">Gerar jogos</button>
+          <button class="secondary" id="btnCopy">Copiar jogos</button>
+          <button class="secondary" id="btnCSV">Baixar CSV</button>
+          <button class="danger" id="btnClear">Limpar</button>
+        </div>
+
+        <div class="small" style="margin-top:10px;">
+          Dica: se não estiver gerando, afrouxe filtros (ex: repetição 7–11, consecutivos 1–6, soma 170–230).
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="small" id="msg"></div>
+        <div class="out" id="output"></div>
+
+        <table class="table" id="statsTable" style="display:none;">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jogo</th>
+              <th>Pares</th>
+              <th>Soma</th>
+              <th>Repetidos</th>
+              <th>Consecutivos</th>
+            </tr>
+          </thead>
+          <tbody id="statsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+
+  const kpiStatus = $("kpiStatus");
+  const kpiCount = $("kpiCount");
+  const msg = $("msg");
+  const out = $("output");
+  const statsTable = $("statsTable");
+  const statsBody = $("statsBody");
+
+  function setStatus(text, ok=true){
+    kpiStatus.textContent = text;
+    kpiStatus.className = "pill " + (ok ? "ok" : "err");
+  }
+
+  function parseNums(text){
+    const nums = (text || "")
+      .replace(/[^\d\s,;-]/g, " ")
+      .replace(/[-;]/g, " ")
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(n => parseInt(n, 10))
+      .filter(n => Number.isFinite(n));
+    return nums;
+  }
+
+  function uniqSorted(arr){
+    return Array.from(new Set(arr)).sort((a,b)=>a-b);
+  }
+
+  function validRange(n){ return n>=1 && n<=25; }
+
+  function formatGame(game){
+    return game.map(n => String(n).padStart(2,"0")).join(" ");
+  }
+
+  function countEvens(game){
+    let ev=0;
+    for(const n of game) if(n%2===0) ev++;
+    return ev;
+  }
+
+  function sumGame(game){
+    return game.reduce((a,b)=>a+b,0);
+  }
+
+  function countRepeats(game, lastSet){
+    let r=0;
+    for(const n of game) if(lastSet.has(n)) r++;
+    return r;
+  }
+
+  // "Consecutivos" aqui = quantidade de adjacências consecutivas (ex: 10-11 conta 1; 10-11-12 conta 2).
+  function countConsecutiveAdj(game){
+    const g = [...game].sort((a,b)=>a-b);
+    let c=0;
+    for(let i=1;i<g.length;i++){
+      if(g[i] === g[i-1] + 1) c++;
+    }
+    return c;
+  }
+
+  // Grade 5x5: 1..25 -> linhas 0..4, colunas 0..4
+  function maxLineCol(game){
+    const row = [0,0,0,0,0];
+    const col = [0,0,0,0,0];
+    for(const n of game){
+      const idx = n-1;
+      const r = Math.floor(idx/5);
+      const c = idx%5;
+      row[r]++; col[c]++;
+    }
+    return Math.max(...row, ...col);
+  }
+
+  function pickRandomDistinct(pool, k){
+    // pool array
+    const a = [...pool];
+    // Fisher-Yates parcial
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a.slice(0,k).sort((x,y)=>x-y);
+  }
+
+  function makeCandidateBalanced(lastNums, filters){
+    // Estratégia: escolher X repetidos e completar com não repetidos.
+    const lastSet = new Set(lastNums);
+    const repeatedTarget = randInt(filters.repMin, filters.repMax);
+    const evensTarget = randInt(filters.pairsMin, filters.pairsMax);
+
+    const repeatedPool = lastNums.slice();
+    const nonRepeatedPool = [];
+    for(let n=1;n<=25;n++) if(!lastSet.has(n)) nonRepeatedPool.push(n);
+
+    const repPick = pickRandomDistinct(repeatedPool, repeatedTarget);
+    const need = 15 - repPick.length;
+    const nonPick = pickRandomDistinct(nonRepeatedPool, need);
+    let game = uniqSorted(repPick.concat(nonPick));
+
+    // Ajuste simples para aproximar pares alvo (tenta trocar 1 número se fora do range)
+    // Não é perfeito, mas ajuda a convergir mais rápido.
+    let ev = countEvens(game);
+    let safety = 40;
+    while(safety-- > 0 && (ev < filters.pairsMin || ev > filters.pairsMax)){
+      if(ev < filters.pairsMin){
+        // trocar um ímpar por um par (se possível)
+        const oddsInGame = game.filter(n=>n%2===1);
+        const evensOut = [];
+        for(let n=1;n<=25;n++){
+          if(!game.includes(n) && n%2===0) evensOut.push(n);
+        }
+        if(oddsInGame.length===0 || evensOut.length===0) break;
+        const remove = oddsInGame[Math.floor(Math.random()*oddsInGame.length)];
+        const add = evensOut[Math.floor(Math.random()*evensOut.length)];
+        game = uniqSorted(game.filter(x=>x!==remove).concat([add]));
+      }else if(ev > filters.pairsMax){
+        // trocar um par por um ímpar
+        const evensInGame = game.filter(n=>n%2===0);
+        const oddsOut = [];
+        for(let n=1;n<=25;n++){
+          if(!game.includes(n) && n%2===1) oddsOut.push(n);
+        }
+        if(evensInGame.length===0 || oddsOut.length===0) break;
+        const remove = evensInGame[Math.floor(Math.random()*evensInGame.length)];
+        const add = oddsOut[Math.floor(Math.random()*oddsOut.length)];
+        game = uniqSorted(game.filter(x=>x!==remove).concat([add]));
+      }
+      ev = countEvens(game);
+    }
+
+    return game;
+  }
+
+  function makeCandidateRandom(){
+    const pool = [];
+    for(let n=1;n<=25;n++) pool.push(n);
+    return pickRandomDistinct(pool, 15);
+  }
+
+  function makeCandidateBase18(base18){
+    return pickRandomDistinct(base18, 15);
+  }
+
+  function passesFilters(game, lastSet, filters){
+    const ev = countEvens(game);
+    if(ev < filters.pairsMin || ev > filters.pairsMax) return false;
+
+    const s = sumGame(game);
+    if(s < filters.sumMin || s > filters.sumMax) return false;
+
+    const rep = countRepeats(game, lastSet);
+    if(rep < filters.repMin || rep > filters.repMax) return false;
+
+    const cons = countConsecutiveAdj(game);
+    if(cons < filters.consMin || cons > filters.consMax) return false;
+
+    const mx = maxLineCol(game);
+    if(mx > filters.lineMax) return false;
+
+    return true;
+  }
+
+  function randInt(min,max){
+    min = Math.floor(min); max = Math.floor(max);
+    if(max < min) [min,max]=[max,min];
+    return Math.floor(Math.random()*(max-min+1))+min;
+  }
+
+  function getFilters(){
+    return {
+      pairsMin: +$("pairsMin").value,
+      pairsMax: +$("pairsMax").value,
+      repMin: +$("repMin").value,
+      repMax: +$("repMax").value,
+      sumMin: +$("sumMin").value,
+      sumMax: +$("sumMax").value,
+      consMin: +$("consMin").value,
+      consMax: +$("consMax").value,
+      lineMax: +$("lineMax").value
+    };
+  }
+
+  function validateInputs(){
+    const lastNums = uniqSorted(parseNums($("lastResult").value)).filter(validRange);
+    const mode = $("mode").value;
+
+    // lastResult é opcional em modo random, mas necessário nos modos que usam repetição.
+    if((mode === "balanced" || mode === "base18") && lastNums.length !== 15){
+      return { ok:false, err:"Informe o último resultado com exatamente 15 números (1 a 25).", lastNums };
+    }
+
+    const qty = +$("qty").value;
+    const tries = +$("tries").value;
+    if(!(qty>=1 && qty<=200)) return { ok:false, err:"Quantidade de jogos deve ser entre 1 e 200.", lastNums };
+    if(!(tries>=100 && tries<=200000)) return { ok:false, err:"Tentativas máximas deve ser entre 100 e 200000.", lastNums };
+
+    if(mode === "base18"){
+      const base = uniqSorted(parseNums($("base18").value)).filter(validRange);
+      if(base.length !== 18){
+        return { ok:false, err:"No modo Base 18, informe exatamente 18 números (1 a 25).", lastNums, base18: base };
+      }
+      return { ok:true, lastNums, base18: base };
+    }
+
+    return { ok:true, lastNums };
+  }
+
+  function render(games, lastSet){
+    if(!games.length){
+      out.textContent = "";
+      statsTable.style.display = "none";
+      statsBody.innerHTML = "";
+      kpiCount.textContent = "0 jogos";
+      return;
+    }
+
+    out.textContent = games.map((g,i)=> `${String(i+1).padStart(2,"0")}) ${formatGame(g)}`).join("\n");
+
+    statsBody.innerHTML = "";
+    games.forEach((g,i)=>{
+      const tr = document.createElement("tr");
+      const ev = countEvens(g);
+      const s = sumGame(g);
+      const rep = lastSet ? countRepeats(g,lastSet) : "-";
+      const cons = countConsecutiveAdj(g);
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td>${formatGame(g)}</td>
+        <td>${ev}</td>
+        <td>${s}</td>
+        <td>${rep}</td>
+        <td>${cons}</td>
+      `;
+      statsBody.appendChild(tr);
+    });
+    statsTable.style.display = "";
+    kpiCount.textContent = `${games.length} jogos`;
+  }
+
+  function generate(){
+    msg.textContent = "";
+    setStatus("Gerando...", true);
+
+    const v = validateInputs();
+    if(!v.ok){
+      setStatus("Erro", false);
+      msg.innerHTML = `<div class="err">${v.err}</div>`;
+      return;
+    }
+
+    const mode = $("mode").value;
+    const filters = getFilters();
+    const qty = +$("qty").value;
+    const tries = +$("tries").value;
+
+    const lastNums = v.lastNums || [];
+    const lastSet = lastNums.length ? new Set(lastNums) : null;
+    const base18 = v.base18 || null;
+
+    const games = [];
+    const seen = new Set();
+
+    let attempts = 0;
+    while(games.length < qty && attempts < tries){
+      attempts++;
+
+      let candidate;
+      if(mode === "random"){
+        candidate = makeCandidateRandom();
+      }else if(mode === "balanced"){
+        candidate = makeCandidateBalanced(lastNums, filters);
+      }else if(mode === "base18"){
+        candidate = makeCandidateBase18(base18);
+      }
+
+      const key = candidate.join("-");
+      if(seen.has(key)) continue;
+
+      // No modo random, repetição depende de lastSet; se não houver lastSet, ignoramos repMin/repMax
+      let ok;
+      if(mode === "random" && !lastSet){
+        // Copia filtros e desativa repetição quando não há último resultado
+        const f2 = {...filters, repMin:0, repMax:15};
+        ok = passesFilters(candidate, new Set(), f2);
+      }else{
+        ok = passesFilters(candidate, lastSet, filters);
+      }
+
+      if(ok){
+        seen.add(key);
+        games.push(candidate);
+      }
+    }
+
+    if(games.length === qty){
+      setStatus("OK", true);
+      msg.innerHTML = `<div class="ok">Gerados ${games.length} jogos em ${attempts} tentativas.</div>`;
+    }else{
+      setStatus("Parcial", false);
+      msg.innerHTML = `<div class="err">Foram gerados ${games.length}/${qty} jogos em ${attempts} tentativas. Seus filtros estão rígidos demais.</div>`;
+    }
+
+    render(games, lastSet);
+
+    // Salva para botões Copy/CSV
+    window.__LOTO_GAMES__ = games;
+    window.__LOTO_LASTSET__ = lastSet;
+  }
+
+  async function copyGames(){
+    const games = window.__LOTO_GAMES__ || [];
+    if(!games.length){
+      msg.innerHTML = `<div class="err">Nada para copiar. Gere os jogos primeiro.</div>`;
+      return;
+    }
+    const text = games.map(g=>formatGame(g)).join("\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      msg.innerHTML = `<div class="ok">Jogos copiados para a área de transferência.</div>`;
+    }catch(e){
+      msg.innerHTML = `<div class="err">Não foi possível copiar automaticamente. Selecione e copie manualmente na caixa à direita.</div>`;
+    }
+  }
+
+  function downloadCSV(){
+    const games = window.__LOTO_GAMES__ || [];
+    if(!games.length){
+      msg.innerHTML = `<div class="err">Nada para exportar. Gere os jogos primeiro.</div>`;
+      return;
+    }
+    // CSV simples: jogo; n1..n15
+    const lines = [];
+    lines.push(["jogo","n1","n2","n3","n4","n5","n6","n7","n8","n9","n10","n11","n12","n13","n14","n15"].join(";"));
+    games.forEach((g,i)=>{
+      const row = [String(i+1)];
+      g.forEach(n=>row.push(String(n).padStart(2,"0")));
+      lines.push(row.join(";"));
+    });
+
+    const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lotofacil_jogos.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    msg.innerHTML = `<div class="ok">CSV baixado.</div>`;
+  }
+
+  function clearAll(){
+    $("lastResult").value = "";
+    $("base18").value = "";
+    out.textContent = "";
+    statsBody.innerHTML = "";
+    statsTable.style.display = "none";
+    msg.textContent = "";
+    setStatus("Pronto", true);
+    kpiCount.textContent = "0 jogos";
+    window.__LOTO_GAMES__ = [];
+  }
+
+  $("btnGenerate").addEventListener("click", generate);
+  $("btnCopy").addEventListener("click", copyGames);
+  $("btnCSV").addEventListener("click", downloadCSV);
+  $("btnClear").addEventListener("click", clearAll);
+
+  setStatus("Pronto", true);
+})();
+</script>
+</body>
+</html>
